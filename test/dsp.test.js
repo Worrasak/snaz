@@ -62,7 +62,7 @@ test('removes centered vocal but keeps panned instrument and bass', () => {
 
 test('strength 0.5 roughly halves the centered vocal', () => {
   const v = sine(440, 0.5);
-  const [outL] = run(v, v.slice(), { enabled: true, strength: 0.5 });
+  const [outL] = run(v, v.slice(), { enabled: true, strength: 0.5, autoGain: false });
   const lv = level(outL, 440);
   assert.ok(lv > 0.2 && lv < 0.3, `vocal ${lv}`);
 });
@@ -87,4 +87,19 @@ test('keeps the side part of an instrument sharing a bin with the vocal', () => 
   // The guitar's side component (half its amplitude) must survive in both channels.
   assert.ok(level(outL, 440) > 0.12, `L ${level(outL, 440)}`);
   assert.ok(level(outR, 440) > 0.12, `R ${level(outR, 440)}`);
+});
+
+test('auto gain brings the music back toward the original loudness', () => {
+  const vocal = sine(440, 0.5);
+  const guitar = sine(1250, 0.2);
+  const l = new Float32Array(N);
+  const r = new Float32Array(N);
+  for (let i = 0; i < N; i++) { l[i] = vocal[i] + guitar[i]; r[i] = vocal[i] - guitar[i]; }
+  const [plainL] = run(l, r, { enabled: true, strength: 1, autoGain: false });
+  const [autoL] = run(l, r, { enabled: true, strength: 1, autoGain: true });
+  assert.ok(Math.abs(level(plainL, 1250) - 0.2) < 0.02, `plain ${level(plainL, 1250)}`);
+  // Capped at +9 dB, so the guitar ends up much louder but never above 2.8x.
+  const boosted = level(autoL, 1250);
+  assert.ok(boosted > 0.4 && boosted <= 0.2 * 2.8 + 0.01, `auto ${boosted}`);
+  assert.ok(level(autoL, 440) < 0.05, `vocal ${level(autoL, 440)}`);
 });

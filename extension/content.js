@@ -92,15 +92,15 @@
   // Makes up the loudness lost with the vocal, with a limiter so peaks don't clip.
   function withBoost(chain) {
     const boost = new GainNode(ctx);
-    const limiter = new DynamicsCompressorNode(ctx, { knee: 0, attack: 0.003, release: 0.25 });
+    const limiter = new DynamicsCompressorNode(ctx, { knee: 4, attack: 0.002, release: 0.15 });
     chain.output.connect(boost).connect(limiter);
     const update = (s) => {
       chain.update(s);
       const on = s.enabled && s.strength > 0;
       boost.gain.value = on ? Math.pow(10, s.boostDb / 20) : 1;
       // Ratio 1 makes the compressor a no-op while karaoke is off.
-      limiter.threshold.value = on ? -1 : 0;
-      limiter.ratio.value = on ? 20 : 1;
+      limiter.threshold.value = on ? -3 : 0;
+      limiter.ratio.value = on ? 12 : 1;
     };
     update(settings);
     return { input: chain.input, output: limiter, update };

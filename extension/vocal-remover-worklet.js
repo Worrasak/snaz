@@ -10,6 +10,9 @@ const FFT_SIZE = 2048;
 const HOP = FFT_SIZE / 4;
 // Hann analysis * Hann synthesis at 75% overlap sums to 1.5.
 const OLA_GAIN = 1 / 1.5;
+// Auto gain: loudness tracked over ~3 s, makeup capped at +9 dB.
+const LOUDNESS_SECONDS = 3;
+const MAX_MAKEUP = 2.8;
 
 class FFT {
   constructor(n) {
@@ -63,7 +66,8 @@ class VocalRemoverCore {
   constructor(sampleRate, params = {}) {
     this.sampleRate = sampleRate;
     // width: 0 = ตัดเฉพาะเสียงที่อยู่ตรงกลางเป๊ะ, 1 = ตัดเสียงที่เอียงซ้าย/ขวาไปด้วย
-    this.params = { enabled: true, strength: 1, lowHz: 120, highHz: 8000, width: 0.2 };
+    // autoGain: ดันดนตรีกลับขึ้นมาให้ดังใกล้เคียงต้นฉบับหลังตัดเสียงร้อง
+    this.params = { enabled: true, strength: 1, lowHz: 120, highHz: 8000, width: 0.2, autoGain: true };
     this.setParams(params);
 
     this.fft = new FFT(FFT_SIZE);
@@ -84,6 +88,25 @@ class VocalRemoverCore {
     // Per-bin gain smoothed over time to reduce "musical noise" artifacts.
     this.gain = new Float64Array(FFT_SIZE / 2 + 1).fill(1);
     this.rover = 0;
+    this.energyIn = 0;
+    this.energyOut = 0;
+    this.loudnessDecay = Math.exp(-HOP / (sampleRate * LOUDNESS_SECONDS));
+  }
+
+  // Gain that brings the processed loudness back toward the original's.
+  makeup(frameIn, frameOut, active) {
+    if (!active) {
+      this.energyIn = this.energyOut = 0;
+      return 1;
+    }
+    // Ignore silence so quiet intros and pauses don't skew the estimate.
+    if (frameIn > 0.1) {
+      const d = this.loudnessDecay;
+      this.energyIn = d * this.energyIn + (1 - d) * frameIn;
+      this.energyOut = d * this.energyOut + (1 - d) * frameOut;
+    }
+    if (this.energyOut <= 0) return 1;
+    return Math.min(Math.max(Math.sqrt(this.energyIn / this.energyOut), 1), MAX_MAKEUP);
   }
 
   setParams(p) {
@@ -119,12 +142,15 @@ class VocalRemoverCore {
     const lo = 1 - 0.5 * Math.min(Math.max(width, 0.02), 1);
     const binHz = this.sampleRate / FFT_SIZE;
     const half = FFT_SIZE / 2;
+    let frameIn = 0;
+    let frameOut = 0;
     for (let k = 0; k <= half; k++) {
       const f = k * binHz;
+      const pl = reL[k] * reL[k] + imL[k] * imL[k];
+      const pr = reR[k] * reR[k] + imR[k] * imR[k];
+      frameIn += pl + pr;
       let target = 1;
       if (amount > 0 && f >= lowHz && f <= highHz) {
-        const pl = reL[k] * reL[k] + imL[k] * imL[k];
-        const pr = reR[k] * reR[k] + imR[k] * imR[k];
         // 1 when L == R (centered, in phase); <= 0 when hard-panned or out of phase.
         const sim = (2 * (reL[k] * reR[k] + imL[k] * imR[k])) / (pl + pr + 1e-12);
         let c = Math.min(Math.max((sim - lo) / (1 - lo), 0), 1);
@@ -141,6 +167,7 @@ class VocalRemoverCore {
       const sideIm = 0.5 * (imL[k] - imR[k]);
       reL[k] = midRe + sideRe; imL[k] = midIm + sideIm;
       reR[k] = midRe - sideRe; imR[k] = midIm - sideIm;
+      frameOut += reL[k] * reL[k] + imL[k] * imL[k] + reR[k] * reR[k] + imR[k] * imR[k];
       if (k > 0 && k < half) {
         const m = FFT_SIZE - k;
         reL[m] = reL[k]; imL[m] = -imL[k];
@@ -150,7 +177,7 @@ class VocalRemoverCore {
 
     fft.transform(reL, imL, true);
     fft.transform(reR, imR, true);
-    const scale = OLA_GAIN / FFT_SIZE;
+    const scale = (OLA_GAIN / FFT_SIZE) * this.makeup(frameIn, frameOut, amount > 0 && this.params.autoGain);
     for (let i = 0; i < FFT_SIZE; i++) {
       this.accL[i] += reL[i] * w[i] * scale;
       this.accR[i] += reR[i] * w[i] * scale;

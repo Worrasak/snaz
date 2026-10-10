@@ -10,6 +10,7 @@ const formats = {
 function render(s) {
   $('enabled').checked = s.enabled;
   $('lyrics').checked = s.lyrics;
+  $('autoGain').checked = s.autoGain;
   for (const key of Object.keys(formats)) {
     $(key).value = s[key];
     $(`${key}Out`).textContent = formats[key](s[key]);
@@ -23,6 +24,7 @@ $('enabled').addEventListener('change', (e) => {
   setTimeout(refreshStatus, 300);
   setTimeout(() => lyricsCall({ type: 'lyrics-state' }), 1500);
 });
+$('autoGain').addEventListener('change', (e) => chrome.storage.sync.set({ autoGain: e.target.checked }));
 $('lyrics').addEventListener('change', (e) => {
   chrome.storage.sync.set({ lyrics: e.target.checked });
   setTimeout(() => lyricsCall({ type: 'lyrics-state' }), 1500);
