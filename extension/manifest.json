@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Snaz Karaoke – ตัดเสียงร้อง YouTube",
+  "version": "0.1.0",
+  "description": "ตัดเสียงนักร้องออกจากวิดีโอ YouTube แบบเรียลไทม์ ให้เหลือดนตรีและคอรัสสำหรับร้องคาราโอเกะ",
+  "permissions": ["storage"],
+  "action": {
+    "default_title": "Snaz Karaoke",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["settings.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["vocal-remover-worklet.js"],
+      "matches": ["*://*.youtube.com/*"]
+    }
+  ]
+}
