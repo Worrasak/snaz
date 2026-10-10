@@ -1,0 +1,50 @@
+.snaz-lyrics {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 70px;
+  z-index: 60;
+  pointer-events: none;
+  text-align: center;
+  font-family: "Noto Sans Thai", "Sarabun", "Leelawadee UI", "Tahoma", system-ui, sans-serif;
+  line-height: 1.7;
+  color: #fff;
+  text-shadow: 0 0 4px #000, 0 2px 6px #000;
+  transition: bottom .2s;
+}
+.ytp-autohide .snaz-lyrics { bottom: 24px; }
+.ad-showing .snaz-lyrics { display: none; }
+.snaz-lyrics .cur {
+  /* Size to the text so the sweep tracks the words, not the whole row. */
+  width: fit-content;
+  margin: 0 auto;
+  font-size: clamp(18px, 3.4vw, 44px);
+  font-weight: 700;
+  /* Karaoke sweep: --p goes 0 → 1 while the line is sung. */
+  background: linear-gradient(90deg, #ffd23f calc(var(--p, 0) * 100%), #fff calc(var(--p, 0) * 100%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 3px #000);
+  text-shadow: none;
+}
+.snaz-lyrics .next {
+  font-size: clamp(14px, 2.2vw, 28px);
+  opacity: .75;
+}
+.snaz-lyrics.plain {
+  top: 8%;
+  bottom: auto;
+  left: auto;
+  right: 2%;
+  width: min(36%, 420px);
+  max-height: 70%;
+  overflow-y: auto;
+  pointer-events: auto;
+  text-align: left;
+  font-size: clamp(13px, 1.5vw, 18px);
+  white-space: pre-wrap;
+  background: rgba(0, 0, 0, .55);
+  border-radius: 8px;
+  padding: 10px 14px;
+}

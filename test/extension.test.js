@@ -42,8 +42,17 @@ function wav(seconds) {
     if (route.request().url().endsWith('/song.wav')) {
       return route.fulfill({ body: wav(3), contentType: 'audio/wav' });
     }
-    return route.fulfill({ contentType: 'text/html',
-      body: '<video class="html5-main-video" src="/song.wav" loop></video>' });
+    return route.fulfill({ contentType: 'text/html; charset=utf-8',
+      body: '<div id="movie_player" style="position:relative;width:640px;height:360px">'
+        + '<video class="html5-main-video" src="/song.wav" loop></video></div>'
+        + '<ytd-watch-metadata><h1>ทดสอบ - เพลงไทย【Official MV】</h1></ytd-watch-metadata>' });
+  });
+  let lyricsQuery = null;
+  await context.route('https://lrclib.net/**', (route) => {
+    lyricsQuery = new URL(route.request().url()).searchParams.get('q');
+    return route.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify([{ artistName: 'ทดสอบ', trackName: 'เพลงไทย', duration: 3,
+        syncedLyrics: '[00:00.00]บรรทัดแรก\n[00:01.00]ฉันยังรักเธอ\n[00:02.50]บรรทัดสุดท้าย' }]) });
   });
 
   const id = extensionId(extDir);
@@ -57,11 +66,17 @@ function wav(seconds) {
   await page.goto('https://www.youtube.com/watch?v=test');
   await page.click('video', { force: true });
   await page.evaluate(() => document.querySelector('video').play());
-  await page.waitForTimeout(1500);
+  await page.evaluate(() => { document.querySelector('video').currentTime = 1.2; });
+  const lyric = await page.waitForFunction(() => {
+    const el = document.querySelector('.snaz-lyrics .cur');
+    return el && !el.closest('[hidden]') && el.textContent === 'ฉันยังรักเธอ' && el.textContent;
+  }, null, { timeout: 10000 }).then((h) => h.jsonValue()).catch(() => null);
+  await page.screenshot({ path: path.join(os.tmpdir(), 'snaz-lyrics.png') });
   await context.close();
 
-  console.log(logs);
-  const ok = logs.some((l) => l.includes('[Snaz Karaoke] active (worklet mode)'));
+  console.log(logs, { lyricsQuery, lyric });
+  const ok = logs.some((l) => l.includes('[Snaz Karaoke] active (worklet mode)'))
+    && lyricsQuery === 'ทดสอบ เพลงไทย' && lyric === 'ฉันยังรักเธอ';
   console.log(ok ? 'PASS' : 'FAIL');
   process.exit(ok ? 0 : 1);
 })();

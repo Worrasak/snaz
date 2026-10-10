@@ -13,33 +13,67 @@
     </label>
   </header>
 
-  <label class="row">
-    <span>ตัดเสียงร้อง <output id="strengthOut"></output></span>
-    <input type="range" id="strength" min="0" max="1" step="0.05">
-  </label>
+  <nav class="tabs">
+    <button data-tab="sound" class="active">🎵 เสียง</button>
+    <button data-tab="lyrics">📝 เนื้อเพลง</button>
+  </nav>
 
-  <label class="row">
-    <span>เพิ่มความดังดนตรี <output id="boostDbOut"></output></span>
-    <input type="range" id="boostDb" min="0" max="12" step="1">
-  </label>
+  <section id="tab-sound">
+    <label class="row">
+      <span>ตัดเสียงร้อง <output id="strengthOut"></output></span>
+      <input type="range" id="strength" min="0" max="1" step="0.05">
+    </label>
 
-  <label class="row">
-    <span>ช่วงที่ถือว่าเป็นเสียงร้อง <output id="widthOut"></output></span>
-    <input type="range" id="width" min="0.05" max="1" step="0.05">
-    <small>แคบ = ดนตรีเหลือมากขึ้น · กว้าง = ตัดเสียงร้องได้สะอาดขึ้น</small>
-  </label>
+    <label class="row">
+      <span>เพิ่มความดังดนตรี <output id="boostDbOut"></output></span>
+      <input type="range" id="boostDb" min="0" max="12" step="1">
+    </label>
 
-  <label class="row">
-    <span>เก็บเบสต่ำกว่า <output id="lowHzOut"></output></span>
-    <input type="range" id="lowHz" min="40" max="400" step="10">
-  </label>
+    <label class="row">
+      <span>ช่วงที่ถือว่าเป็นเสียงร้อง <output id="widthOut"></output></span>
+      <input type="range" id="width" min="0.05" max="1" step="0.05">
+      <small>แคบ = ดนตรีเหลือมากขึ้น · กว้าง = ตัดเสียงร้องได้สะอาดขึ้น</small>
+    </label>
 
-  <label class="row">
-    <span>เก็บเสียงแหลมสูงกว่า <output id="highHzOut"></output></span>
-    <input type="range" id="highHz" min="3000" max="16000" step="250">
-  </label>
+    <label class="row">
+      <span>เก็บเบสต่ำกว่า <output id="lowHzOut"></output></span>
+      <input type="range" id="lowHz" min="40" max="400" step="10">
+    </label>
 
-  <button id="reset">ค่าเริ่มต้น</button>
+    <label class="row">
+      <span>เก็บเสียงแหลมสูงกว่า <output id="highHzOut"></output></span>
+      <input type="range" id="highHz" min="3000" max="16000" step="250">
+    </label>
+
+    <button id="reset">ค่าเริ่มต้น</button>
+  </section>
+
+  <section id="tab-lyrics" hidden>
+    <label class="check"><input type="checkbox" id="lyrics"> แสดงเนื้อเพลงบนวิดีโอ</label>
+    <p id="lyricsNow" class="now"></p>
+
+    <div class="offset">
+      <span>เลื่อนเวลา</span>
+      <button data-delta="-0.5">−0.5 วิ</button>
+      <output id="offsetOut">0.0 วิ</output>
+      <button data-delta="0.5">+0.5 วิ</button>
+    </div>
+    <small>กด + ถ้าเนื้อเพลงขึ้นช้ากว่าเสียงร้อง กด − ถ้าขึ้นเร็วไป</small>
+
+    <form id="searchForm" class="search">
+      <input id="query" type="search" placeholder="ชื่อเพลง ศิลปิน">
+      <button>ค้นหา</button>
+    </form>
+    <ul id="results" class="results"></ul>
+
+    <details>
+      <summary>วางเนื้อเพลงเอง</summary>
+      <textarea id="custom" rows="6" placeholder="[00:12.50]ท่อนแรกของเพลง&#10;[00:17.20]ท่อนที่สอง&#10;&#10;หรือวางเนื้อเพลงธรรมดาไม่มีเวลาก็ได้"></textarea>
+      <button id="saveCustom">ใช้เนื้อเพลงนี้</button>
+    </details>
+    <button id="clearLyrics" class="link">ล้างเนื้อเพลงของวิดีโอนี้ แล้วค้นหาใหม่</button>
+  </section>
+
   <p id="status" class="status"></p>
 
   <script src="settings.js"></script>

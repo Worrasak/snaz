@@ -1,11 +1,11 @@
 {
   "name": "snaz-karaoke",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Chrome extension that removes lead vocals from YouTube in real time for karaoke",
+  "description": "Chrome extension that removes lead vocals from YouTube in real time and shows synced lyrics for karaoke",
   "scripts": {
-    "test": "node --test test/dsp.test.js",
-    "test:browser": "node test/browser.test.js && node test/extension.test.js"
+    "test": "node --test test/dsp.test.js test/lyrics.test.js",
+    "test:browser": "node test/browser.test.js && PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1 node test/extension.test.js"
   },
   "devDependencies": {
     "playwright": "^1.56.1"
