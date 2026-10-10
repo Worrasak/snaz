@@ -3,6 +3,7 @@
 // เสียงร้องนำในเพลงส่วนใหญ่ถูกมิกซ์ไว้ "ตรงกลาง" (ซ้ายและขวาเท่ากันและเฟสตรงกัน)
 // ส่วนดนตรีและคอรัสมักกระจายอยู่ซ้าย-ขวา เราจึงแปลงสัญญาณเป็นความถี่ (STFT)
 // แล้วลดเฉพาะ bin ที่ซ้ายกับขวาเหมือนกัน และอยู่ในช่วงความถี่ของเสียงร้อง
+// โดยลดเฉพาะส่วน mid (L+R) ส่วน side (L-R) ซึ่งเป็นดนตรีที่กระจายซ้าย-ขวาจะไม่ถูกแตะ
 // วิธีนี้เก็บภาพเสียงสเตอริโอ เบส และกลองกระเดื่องไว้ได้ดีกว่าการลบ L-R ตรงๆ
 
 const FFT_SIZE = 2048;
@@ -61,7 +62,8 @@ class FFT {
 class VocalRemoverCore {
   constructor(sampleRate, params = {}) {
     this.sampleRate = sampleRate;
-    this.params = { enabled: true, strength: 1, lowHz: 120, highHz: 8000 };
+    // width: 0 = ตัดเฉพาะเสียงที่อยู่ตรงกลางเป๊ะ, 1 = ตัดเสียงที่เอียงซ้าย/ขวาไปด้วย
+    this.params = { enabled: true, strength: 1, lowHz: 120, highHz: 8000, width: 0.2 };
     this.setParams(params);
 
     this.fft = new FFT(FFT_SIZE);
@@ -111,8 +113,10 @@ class VocalRemoverCore {
     fft.transform(reL, imL, false);
     fft.transform(reR, imR, false);
 
-    const { enabled, strength, lowHz, highHz } = this.params;
+    const { enabled, strength, lowHz, highHz, width } = this.params;
     const amount = enabled ? Math.min(Math.max(strength, 0), 1) : 0;
+    // Similarity above which a bin starts counting as centered.
+    const lo = 1 - 0.5 * Math.min(Math.max(width, 0.02), 1);
     const binHz = this.sampleRate / FFT_SIZE;
     const half = FFT_SIZE / 2;
     for (let k = 0; k <= half; k++) {
@@ -123,14 +127,20 @@ class VocalRemoverCore {
         const pr = reR[k] * reR[k] + imR[k] * imR[k];
         // 1 when L == R (centered, in phase); <= 0 when hard-panned or out of phase.
         const sim = (2 * (reL[k] * reR[k] + imL[k] * imR[k])) / (pl + pr + 1e-12);
-        let c = Math.min(Math.max((sim - 0.5) / 0.5, 0), 1);
+        let c = Math.min(Math.max((sim - lo) / (1 - lo), 0), 1);
         c = c * c * (3 - 2 * c);
         target = 1 - amount * c;
       }
       // Fast attack (cut quickly), slower release.
       const g = target < gain[k] ? 0.6 * target + 0.4 * gain[k] : 0.3 * target + 0.7 * gain[k];
       gain[k] = g;
-      reL[k] *= g; imL[k] *= g; reR[k] *= g; imR[k] *= g;
+      // Attenuate only the mid; the side holds stereo instruments and stays intact.
+      const midRe = 0.5 * (reL[k] + reR[k]) * g;
+      const midIm = 0.5 * (imL[k] + imR[k]) * g;
+      const sideRe = 0.5 * (reL[k] - reR[k]);
+      const sideIm = 0.5 * (imL[k] - imR[k]);
+      reL[k] = midRe + sideRe; imL[k] = midIm + sideIm;
+      reR[k] = midRe - sideRe; imR[k] = midIm - sideIm;
       if (k > 0 && k < half) {
         const m = FFT_SIZE - k;
         reL[m] = reL[k]; imL[m] = -imL[k];

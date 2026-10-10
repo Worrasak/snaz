@@ -3,6 +3,8 @@ const formats = {
   strength: (v) => `${Math.round(v * 100)}%`,
   lowHz: (v) => `${v} Hz`,
   highHz: (v) => `${(v / 1000).toFixed(1)} kHz`,
+  boostDb: (v) => `+${v} dB`,
+  width: (v) => (v <= 0.25 ? 'แคบ' : v <= 0.6 ? 'กลาง' : 'กว้าง'),
 };
 
 function render(s) {

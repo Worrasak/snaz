@@ -5,9 +5,9 @@ const { VocalRemoverCore, FFT_SIZE } = require('../extension/vocal-remover-workl
 const SR = 48000;
 const N = SR * 2;
 
-function sine(freq, amp) {
+function sine(freq, amp, phase = 0) {
   const out = new Float32Array(N);
-  for (let i = 0; i < N; i++) out[i] = amp * Math.sin((2 * Math.PI * freq * i) / SR);
+  for (let i = 0; i < N; i++) out[i] = amp * Math.sin((2 * Math.PI * freq * i) / SR + phase);
   return out;
 }
 
@@ -65,4 +65,26 @@ test('strength 0.5 roughly halves the centered vocal', () => {
   const [outL] = run(v, v.slice(), { enabled: true, strength: 0.5 });
   const lv = level(outL, 440);
   assert.ok(lv > 0.2 && lv < 0.3, `vocal ${lv}`);
+});
+
+test('keeps a slightly panned instrument', () => {
+  const keys = sine(700, 0.5);
+  const l = new Float32Array(N);
+  const r = new Float32Array(N);
+  for (let i = 0; i < N; i++) { l[i] = 0.65 * keys[i]; r[i] = 0.35 * keys[i]; }
+  const [outL, outR] = run(l, r, { enabled: true, strength: 1 });
+  assert.ok(level(outL, 700) > 0.9 * 0.65 * 0.5, `keys L ${level(outL, 700)}`);
+  assert.ok(level(outR, 700) > 0.9 * 0.35 * 0.5, `keys R ${level(outR, 700)}`);
+});
+
+test('keeps the side part of an instrument sharing a bin with the vocal', () => {
+  const vocal = sine(440, 0.5);
+  const guitar = sine(440, 0.3, Math.PI / 3); // hard left, same frequency
+  const l = new Float32Array(N);
+  const r = new Float32Array(N);
+  for (let i = 0; i < N; i++) { l[i] = vocal[i] + guitar[i]; r[i] = vocal[i]; }
+  const [outL, outR] = run(l, r, { enabled: true, strength: 1 });
+  // The guitar's side component (half its amplitude) must survive in both channels.
+  assert.ok(level(outL, 440) > 0.12, `L ${level(outL, 440)}`);
+  assert.ok(level(outR, 440) > 0.12, `R ${level(outR, 440)}`);
 });
